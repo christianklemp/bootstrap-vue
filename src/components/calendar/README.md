@@ -58,6 +58,77 @@ If no date is selected, `<b-calendar>` returns an empty string `''`, or returns 
 Note that when `value-as-date` prop is set, the returned `Date` object will be in the browser's
 default timezone.
 
+## Types
+<span class="badge badge-info small">v2.XX.0+</span>
+
+Displaying different calendar types can now be specified by the `type` prop. Valid options are `day`, `month`, or `year`, with the default of `day`.
+
+Setting to `month` will display the months in a year.
+```html
+<template>
+  <b-row>
+    <b-col md="auto">
+      <b-calendar v-model="value" @context="onContext" locale="en-US" type="month"></b-calendar>
+    </b-col>
+    <b-col>
+      <p>Value: <b>'{{ value }}'</b></p>
+      <p class="mb-0">Context:</p>
+      <pre class="small">{{ context }}</pre>
+    </b-col>
+  </b-row>
+</template>
+
+<script>
+  export default {
+    data() {
+      return {
+        value: '',
+        context: null
+      }
+    },
+    methods: {
+      onContext(ctx) {
+        this.context = ctx
+      }
+    }
+  }
+</script>
+<!-- b-calendar.vue -->
+```
+
+Setting to `year` will display years in a decade. The return value will be the first day of the year.
+```html
+<template>
+  <b-row>
+    <b-col md="auto">
+      <b-calendar v-model="value" @context="onContext" locale="en-US" type="year"></b-calendar>
+    </b-col>
+    <b-col>
+      <p>Value: <b>'{{ value }}'</b></p>
+      <p class="mb-0">Context:</p>
+      <pre class="small">{{ context }}</pre>
+    </b-col>
+  </b-row>
+</template>
+
+<script>
+  export default {
+    data() {
+      return {
+        value: '',
+        context: null
+      }
+    },
+    methods: {
+      onContext(ctx) {
+        this.context = ctx
+      }
+    }
+  }
+</script>
+<!-- b-calendar.vue -->
+```
+
 ## Disabled and readonly states
 
 Setting the `disabled` prop will remove all interactivity of the `<b-calendar>` component.

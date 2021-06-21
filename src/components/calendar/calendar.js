@@ -5,6 +5,9 @@ import {
   CALENDAR_LONG,
   CALENDAR_NARROW,
   CALENDAR_SHORT,
+  CALENDAR_DAY,
+  CALENDAR_MONTH,
+  CALENDAR_YEAR,
   DATE_FORMAT_2_DIGIT,
   DATE_FORMAT_NUMERIC
 } from '../../constants/date'
@@ -88,6 +91,8 @@ const {
   event: MODEL_EVENT_NAME
 } = makeModelMixin('value', { type: PROP_TYPE_DATE_STRING })
 
+export const NO_DATE_SELECTED = 'No date selected'
+
 // --- Props ---
 
 export const props = makePropsConfigurable(
@@ -128,13 +133,15 @@ export const props = makePropsConfigurable(
     initialDate: makeProp(PROP_TYPE_DATE_STRING),
     // Labels for buttons and keyboard shortcuts
     labelCalendar: makeProp(PROP_TYPE_STRING, 'Calendar'),
+    labelCurrentDecade: makeProp(PROP_TYPE_STRING, 'Current decade'),
     labelCurrentMonth: makeProp(PROP_TYPE_STRING, 'Current month'),
-    labelHelp: makeProp(PROP_TYPE_STRING, 'Use cursor keys to navigate calendar dates'),
+    labelHelp: makeProp(PROP_TYPE_STRING, 'Use cursor keys to navigate calendar'),
+    labelMonths: makeProp(PROP_TYPE_STRING, 'Months'),
     labelNav: makeProp(PROP_TYPE_STRING, 'Calendar navigation'),
     labelNextDecade: makeProp(PROP_TYPE_STRING, 'Next decade'),
     labelNextMonth: makeProp(PROP_TYPE_STRING, 'Next month'),
     labelNextYear: makeProp(PROP_TYPE_STRING, 'Next year'),
-    labelNoDateSelected: makeProp(PROP_TYPE_STRING, 'No date selected'),
+    labelNoDateSelected: makeProp(PROP_TYPE_STRING, NO_DATE_SELECTED),
     labelPrevDecade: makeProp(PROP_TYPE_STRING, 'Previous decade'),
     labelPrevMonth: makeProp(PROP_TYPE_STRING, 'Previous month'),
     labelPrevYear: makeProp(PROP_TYPE_STRING, 'Previous year'),
@@ -161,6 +168,9 @@ export const props = makePropsConfigurable(
     startWeekday: makeProp(PROP_TYPE_NUMBER_STRING, 0),
     // Variant color to use for today's date (defaults to `selectedVariant`)
     todayVariant: makeProp(PROP_TYPE_STRING),
+    type: makeProp(PROP_TYPE_STRING, CALENDAR_DAY, type =>
+      [CALENDAR_DAY, CALENDAR_MONTH, CALENDAR_YEAR].includes(type)
+    ),
     // Always return the `v-model` value as a date object
     valueAsDate: makeProp(PROP_TYPE_BOOLEAN, false),
     // Format of the weekday names at the top of the calendar
@@ -290,6 +300,12 @@ export const BCalendar = Vue.extend({
       date.setMonth(date.getMonth() + 1, 0)
       return date.getDate()
     },
+    calendarFirstYear() {
+      return this.calendarYear - parseInt(`${this.calendarYear}`[3])
+    },
+    calendarLastYear() {
+      return parseInt(`${parseInt(this.calendarYear / 10, 10) + 1}0`)
+    },
     computedVariant() {
       return `btn-${this.selectedVariant || 'primary'}`
     },
@@ -321,7 +337,7 @@ export const BCalendar = Vue.extend({
         selectedDate,
         selectedFormatted: selectedDate
           ? this.formatDateString(selectedDate)
-          : this.labelNoDateSelected,
+          : this.labelNoSelection,
         // Which date cell is considered active due to navigation
         activeYMD,
         activeDate,
@@ -364,22 +380,39 @@ export const BCalendar = Vue.extend({
     },
     // Computed props that return date formatter functions
     formatDateString() {
+      const dateFormatOptions = this.type === CALENDAR_DAY ? this.dateFormatOptions : {}
       // Returns a date formatter function
       return createDateFormatter(this.calendarLocale, {
         // Ensure we have year, month, day shown for screen readers/ARIA
         // If users really want to leave one of these out, they can
         // pass `undefined` for the property value
-        year: DATE_FORMAT_NUMERIC,
-        month: DATE_FORMAT_2_DIGIT,
-        day: DATE_FORMAT_2_DIGIT,
+        year: this.type !== CALENDAR_MONTH ? DATE_FORMAT_NUMERIC : undefined,
+        month: this.type === CALENDAR_MONTH ? CALENDAR_LONG : undefined,
+        day: this.type === CALENDAR_DAY ? DATE_FORMAT_2_DIGIT : undefined,
         // Merge in user supplied options
-        ...this.dateFormatOptions,
+        ...dateFormatOptions,
         // Ensure hours/minutes/seconds are not shown
         // As we do not support the time portion (yet)
         hour: undefined,
         minute: undefined,
         second: undefined,
         // Ensure calendar is gregorian
+        calendar: CALENDAR_GREGORY
+      })
+    },
+    formatMonth() {
+      // Returns a date formatter function
+      return createDateFormatter(this.calendarLocale, {
+        year: undefined,
+        month: CALENDAR_LONG,
+        calendar: CALENDAR_GREGORY
+      })
+    },
+    formatYear() {
+      // Returns a date formatter function
+      return createDateFormatter(this.calendarLocale, {
+        year: DATE_FORMAT_NUMERIC,
+        month: undefined,
         calendar: CALENDAR_GREGORY
       })
     },
@@ -420,6 +453,24 @@ export const BCalendar = Vue.extend({
       // Return a formatter function instance
       return date => nf.format(date.getDate())
     },
+    labelCurrent() {
+      if (this.type === CALENDAR_YEAR) {
+        return this.labelCurrentDecade
+      }
+
+      return this.labelCurrentMonth
+    },
+    labelNoSelection() {
+      if (this.labelNoDateSelected !== NO_DATE_SELECTED) {
+        return this.labelNoDateSelected
+      }
+
+      return this.type === CALENDAR_YEAR
+        ? 'No year selected'
+        : this.type === CALENDAR_MONTH
+          ? 'No month selected'
+          : this.labelNoDateSelected
+    },
     // Disabled states for the nav buttons
     prevDecadeDisabled() {
       const min = this.computedMin
@@ -452,55 +503,103 @@ export const BCalendar = Vue.extend({
     // Calendar dates generation
     calendar() {
       const matrix = []
-      const firstDay = this.calendarFirstDay
-      const calendarYear = firstDay.getFullYear()
-      const calendarMonth = firstDay.getMonth()
-      const daysInMonth = this.calendarDaysInMonth
-      const startIndex = firstDay.getDay() // `0`..`6`
-      const weekOffset = (this.computedWeekStarts > startIndex ? 7 : 0) - this.computedWeekStarts
-      // Build the calendar matrix
-      let currentDay = 0 - weekOffset - startIndex
-      for (let week = 0; week < 6 && currentDay < daysInMonth; week++) {
-        // For each week
-        matrix[week] = []
-        // The following could be a map function
-        for (let j = 0; j < 7; j++) {
-          // For each day in week
-          currentDay++
-          const date = createDate(calendarYear, calendarMonth, currentDay)
-          const month = date.getMonth()
-          const dayYMD = formatYMD(date)
-          const dayDisabled = this.dateDisabled(date)
-          // TODO: This could be a normalizer method
-          let dateInfo = this.computedDateInfoFn(dayYMD, parseYMD(dayYMD))
-          dateInfo =
-            isString(dateInfo) || isArray(dateInfo)
-              ? /* istanbul ignore next */ { class: dateInfo }
-              : isPlainObject(dateInfo)
-                ? { class: '', ...dateInfo }
-                : /* istanbul ignore next */ { class: '' }
-          matrix[week].push({
-            ymd: dayYMD,
-            // Cell content
-            day: this.formatDay(date),
-            label: this.formatDateString(date),
-            // Flags for styling
-            isThisMonth: month === calendarMonth,
-            isDisabled: dayDisabled,
-            // TODO: Handle other dateInfo properties such as notes/events
-            info: dateInfo
-          })
+      if (this.type === CALENDAR_YEAR) {
+        const firstYear = this.calendarFirstYear
+        const lastYear = this.calendarLastYear
+
+        let currentYear = firstYear
+
+        for (let row = 0; row < 6 && currentYear < lastYear; row++) {
+          matrix[row] = []
+
+          for (let y = 0; y < 2; y++) {
+            matrix[row].push({
+              ymd: `${currentYear}-01-01`,
+              day: currentYear,
+              label: currentYear,
+              info: {
+                class: 'year'
+              }
+            })
+
+            currentYear++
+          }
+        }
+      } else if (this.type === CALENDAR_MONTH) {
+        let currentMonth = 0
+
+        for (let row = 0; row < 7 && currentMonth < 12; row++) {
+          matrix[row] = []
+
+          for (let y = 0; y < 2; y++) {
+            const date = createDate(this.calendarYear, currentMonth, 1)
+
+            matrix[row].push({
+              ymd: formatYMD(date),
+              day: this.formatMonth(date),
+              label: this.formatMonth(date),
+              info: {
+                class: 'month'
+              }
+            })
+
+            currentMonth++
+          }
+        }
+      } else {
+        const firstDay = this.calendarFirstDay
+        const calendarYear = firstDay.getFullYear()
+        const calendarMonth = firstDay.getMonth()
+        const daysInMonth = this.calendarDaysInMonth
+        const startIndex = firstDay.getDay() // `0`..`6`
+        const weekOffset = (this.computedWeekStarts > startIndex ? 7 : 0) - this.computedWeekStarts
+        // Build the calendar matrix
+        let currentDay = 0 - weekOffset - startIndex
+        for (let week = 0; week < 6 && currentDay < daysInMonth; week++) {
+          // For each week
+          matrix[week] = []
+          // The following could be a map function
+          for (let j = 0; j < 7; j++) {
+            // For each day in week
+            currentDay++
+            const date = createDate(calendarYear, calendarMonth, currentDay)
+            const month = date.getMonth()
+            const dayYMD = formatYMD(date)
+            const dayDisabled = this.dateDisabled(date)
+            // TODO: This could be a normalizer method
+            let dateInfo = this.computedDateInfoFn(dayYMD, parseYMD(dayYMD))
+            dateInfo =
+              isString(dateInfo) || isArray(dateInfo)
+                ? /* istanbul ignore next */ {class: dateInfo}
+                : isPlainObject(dateInfo)
+                ? {class: '', ...dateInfo}
+                : /* istanbul ignore next */ {class: ''}
+            matrix[week].push({
+              ymd: dayYMD,
+              // Cell content
+              day: this.formatDay(date),
+              label: this.formatDateString(date),
+              // Flags for styling
+              isThisMonth: month === calendarMonth,
+              isDisabled: dayDisabled,
+              // TODO: Handle other dateInfo properties such as notes/events
+              info: dateInfo
+            })
+          }
         }
       }
+
       return matrix
     },
     calendarHeadings() {
-      return this.calendar[0].map(d => {
-        return {
-          text: this.formatWeekdayNameShort(parseYMD(d.ymd)),
-          label: this.formatWeekdayName(parseYMD(d.ymd))
-        }
-      })
+      return this.type === CALENDAR_DAY
+        ? this.calendar[0].map(d => {
+            return {
+              text: this.formatWeekdayNameShort(parseYMD(d.ymd)),
+              label: this.formatWeekdayName(parseYMD(d.ymd))
+            }
+          })
+        : []
     }
   },
   watch: {
@@ -804,7 +903,7 @@ export const BCalendar = Vue.extend({
             h('bdi', { staticClass: 'sr-only' }, ` (${toString(this.labelSelected)}) `),
             h('bdi', this.formatDateString(this.selectedDate))
           ]
-        : this.labelNoDateSelected || '\u00a0' // '&nbsp;'
+        : this.labelNoSelection || '\u00a0' // '&nbsp;'
     )
     $header = h(
       this.headerTag,
@@ -879,59 +978,69 @@ export const BCalendar = Vue.extend({
         }
       },
       [
-        hideDecadeNav
-          ? h()
-          : makeNavBtn(
+        !hideDecadeNav || this.type === CALENDAR_YEAR
+          ? makeNavBtn(
               $prevDecadeIcon,
               this.labelPrevDecade,
               this.gotoPrevDecade,
               this.prevDecadeDisabled,
               'Ctrl+Alt+PageDown'
-            ),
-        makeNavBtn(
-          $prevYearIcon,
-          this.labelPrevYear,
-          this.gotoPrevYear,
-          this.prevYearDisabled,
-          'Alt+PageDown'
-        ),
-        makeNavBtn(
-          $prevMonthIcon,
-          this.labelPrevMonth,
-          this.gotoPrevMonth,
-          this.prevMonthDisabled,
-          'PageDown'
-        ),
-        makeNavBtn(
-          $thisMonthIcon,
-          this.labelCurrentMonth,
-          this.gotoCurrentMonth,
-          this.thisMonthDisabled,
-          'Home'
-        ),
-        makeNavBtn(
-          $nextMonthIcon,
-          this.labelNextMonth,
-          this.gotoNextMonth,
-          this.nextMonthDisabled,
-          'PageUp'
-        ),
-        makeNavBtn(
-          $nextYearIcon,
-          this.labelNextYear,
-          this.gotoNextYear,
-          this.nextYearDisabled,
-          'Alt+PageUp'
-        ),
-        hideDecadeNav
-          ? h()
-          : makeNavBtn(
+            )
+          : h(),
+        this.type === CALENDAR_DAY
+          ? makeNavBtn(
+              $prevYearIcon,
+              this.labelPrevYear,
+              this.gotoPrevYear,
+              this.prevYearDisabled,
+              'Alt+PageDown'
+            )
+          : h(),
+        this.type === CALENDAR_DAY
+          ? makeNavBtn(
+              $prevMonthIcon,
+              this.labelPrevMonth,
+              this.gotoPrevMonth,
+              this.prevMonthDisabled,
+              'PageDown'
+            )
+          : h(),
+        this.type !== CALENDAR_MONTH
+          ? makeNavBtn(
+              $thisMonthIcon,
+              this.labelCurrent,
+              this.gotoCurrentMonth,
+              this.thisMonthDisabled,
+              'Home'
+            )
+          : h(),
+        this.type === CALENDAR_DAY
+          ? makeNavBtn(
+              $nextMonthIcon,
+              this.labelNextMonth,
+              this.gotoNextMonth,
+              this.nextMonthDisabled,
+              'PageUp'
+            )
+          : h(),
+        this.type === CALENDAR_DAY
+          ? makeNavBtn(
+              $nextYearIcon,
+              this.labelNextYear,
+              this.gotoNextYear,
+              this.nextYearDisabled,
+              'Alt+PageUp'
+            )
+          : h(),
+        !hideDecadeNav || this.type === CALENDAR_YEAR
+          ? makeNavBtn(
               $nextDecadeIcon,
               this.labelNextDecade,
               this.gotoNextDecade,
               this.nextDecadeDisabled,
               'Ctrl+Alt+PageUp'
             )
+          : h()
       ]
     )
 
@@ -948,7 +1057,11 @@ export const BCalendar = Vue.extend({
         },
         key: 'grid-caption'
       },
-      this.formatYearMonth(this.calendarFirstDay)
+      this.type === CALENDAR_DAY
+        ? this.formatYearMonth(this.calendarFirstDay)
+        : this.type === CALENDAR_MONTH
+          ? this.labelMonths
+          : `${this.calendarFirstYear} - ${this.calendarLastYear - 1}`
     )
 
     // Calendar weekday headings
@@ -986,7 +1099,7 @@ export const BCalendar = Vue.extend({
         const $btn = h(
           'span',
           {
-            staticClass: 'btn border-0 rounded-circle text-nowrap',
+            staticClass: 'btn border-0 text-nowrap',
             // Should we add some classes to signify if today/selected/etc?
             class: {
               // Give the fake button a focus ring
@@ -996,6 +1109,7 @@ export const BCalendar = Vue.extend({
               active: isSelected, // makes the button look "pressed"
               // Selected date style (need to computed from variant)
               [this.computedVariant]: isSelected,
+              'rounded-circle': this.type === CALENDAR_DAY,
               // Today day style (if not selected), same variant color as selected date
               [this.computedTodayVariant]:
                 isToday && highlightToday && !isSelected && day.isThisMonth,

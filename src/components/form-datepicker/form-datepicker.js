@@ -1,5 +1,6 @@
 import { Vue } from '../../vue'
 import { NAME_FORM_DATEPICKER } from '../../constants/components'
+import { CALENDAR_MONTH, CALENDAR_YEAR } from '../../constants/date'
 import { EVENT_NAME_CONTEXT, EVENT_NAME_HIDDEN, EVENT_NAME_SHOWN } from '../../constants/events'
 import { PROP_TYPE_BOOLEAN, PROP_TYPE_DATE_STRING, PROP_TYPE_STRING } from '../../constants/props'
 import { SLOT_NAME_BUTTON_CONTENT } from '../../constants/slots'
@@ -12,7 +13,7 @@ import { makeProp, makePropsConfigurable, pluckProps } from '../../utils/props'
 import { idMixin, props as idProps } from '../../mixins/id'
 import { BIconCalendar, BIconCalendarFill } from '../../icons/icons'
 import { BButton } from '../button/button'
-import { BCalendar, props as BCalendarProps } from '../calendar/calendar'
+import { BCalendar, NO_DATE_SELECTED, props as BCalendarProps } from '../calendar/calendar'
 import {
   BVFormBtnLabelControl,
   props as BVFormBtnLabelControlProps
@@ -103,7 +104,18 @@ export const BFormDatepicker = /*#__PURE__*/ Vue.extend({
     },
     computedResetValue() {
       return formatYMD(constrainDate(this.resetValue)) || ''
-    }
+    },
+    labelNoSelection() {
+      if (this.labelNoDateSelected !== NO_DATE_SELECTED) {
+        return this.labelNoDateSelected
+      }
+
+      return this.type === CALENDAR_YEAR
+        ? 'No year selected'
+        : this.type === CALENDAR_MONTH
+          ? 'No month selected'
+          : this.labelNoDateSelected
+    },
   },
   watch: {
     [MODEL_PROP_NAME](newValue) {
@@ -202,7 +214,7 @@ export const BFormDatepicker = /*#__PURE__*/ Vue.extend({
   render(h) {
     const { localYMD, disabled, readonly, dark, $props, $scopedSlots } = this
     const placeholder = isUndefinedOrNull(this.placeholder)
-      ? this.labelNoDateSelected
+      ? this.labelNoSelection
       : this.placeholder
 
     // Optional footer buttons

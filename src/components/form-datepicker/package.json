@@ -99,11 +99,19 @@
           },
           {
             "prop": "labelCurrentMonth",
-            "description": "Value of the `aria-label` and `title` attributes on the `Current Month` navigation button"
+            "description": "Value of the `aria-label` and `title` attributes on the `Current Month` navigation button. Utilized when the `type` is set to `day`."
+          },
+          {
+            "prop": "labelCurrentDecade",
+            "description": "Value of the `aria-label` and `title` attributes on the `Current Decade` navigation button. Only utilized the the `type` is set to `year`."
           },
           {
             "prop": "labelHelp",
             "description": "Help text that appears at the bottom of the calendar grid"
+          },
+          {
+            "prop": "labelMonths",
+            "description": "The heading of the picker when `type` is set to `month`"
           },
           {
             "prop": "labelNav",
@@ -249,6 +257,10 @@
           {
             "prop": "todayVariant",
             "description": "Theme color variant to use for highlighting todays date button. Defaults to the `selectedVariant` prop"
+          },
+          {
+            "prop": "type",
+            "description": "The type of calendar to display. Accepts `day`, `month`, or `year`."
           },
           {
             "prop": "value",
