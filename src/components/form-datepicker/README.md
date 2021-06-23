@@ -55,6 +55,55 @@ will have its name attribute set to the value of the `name` prop, and the value 
 set to the selected date as a `YYYY-MM-DD` string. This will allow the `<b-form-datepicker>`
 selected value to be submitted via native browser form submission.
 
+## Picker Types
+
+<span class="badge badge-info small">v2.XX.0+</span>
+
+Different picker types can now be specified by the `type` prop. Valid options are `day`, `month`, or
+`year`, with the default of `day`.
+
+Setting to `month` will allow for selection of a month and setting to `year` will allow for
+selection of a year in a decade. The return value for both will be the first day of the year for
+consistency across all types.
+
+```html
+<template>
+  <div>
+    <b-form-group
+      label="Select date picker type"
+      v-slot="{ ariaDescribedby }"
+    >
+      <b-form-radio-group
+        v-model="type"
+        :aria-describedby="ariaDescribedby"
+        aria-controls="ex-type"
+      >
+        <b-form-radio value="day">Day</b-form-radio>
+        <b-form-radio value="month">Month</b-form-radio>
+        <b-form-radio value="year">Year</b-form-radio>
+      </b-form-radio-group>
+    </b-form-group>
+
+    <b-form-datepicker
+      id="ex-type"
+      :type="type"
+    ></b-form-datepicker>
+  </div>
+</template>
+
+<script>
+  export default {
+    data() {
+      return {
+        type: 'day'
+      }
+    },
+  }
+</script>
+
+<!-- b-form-datepicker-type.vue -->
+```
+
 ## Disabled and readonly states
 
 Setting the `disabled` prop will remove all interactivity of the `<b-form-datepicker>` component.
