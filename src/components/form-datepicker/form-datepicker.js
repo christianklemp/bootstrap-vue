@@ -1,6 +1,6 @@
 import { Vue } from '../../vue'
 import { NAME_FORM_DATEPICKER } from '../../constants/components'
-import { CALENDAR_MONTH, CALENDAR_YEAR } from '../../constants/date'
+import { CALENDAR_DAY, CALENDAR_MONTH, CALENDAR_YEAR } from '../../constants/date'
 import { EVENT_NAME_CONTEXT, EVENT_NAME_HIDDEN, EVENT_NAME_SHOWN } from '../../constants/events'
 import { PROP_TYPE_BOOLEAN, PROP_TYPE_DATE_STRING, PROP_TYPE_STRING } from '../../constants/props'
 import { SLOT_NAME_BUTTON_CONTENT } from '../../constants/slots'
@@ -11,7 +11,14 @@ import { makeModelMixin } from '../../utils/model'
 import { omit, pick, sortKeys } from '../../utils/object'
 import { makeProp, makePropsConfigurable, pluckProps } from '../../utils/props'
 import { idMixin, props as idProps } from '../../mixins/id'
-import { BIconCalendar, BIconCalendarFill } from '../../icons/icons'
+import {
+  BIconCalendar,
+  BIconCalendarFill,
+  BIconCalendar3,
+  BIconCalendar3Fill,
+  BIconCalendarMonth,
+  BIconCalendarMonthFill
+} from '../../icons/icons'
 import { BButton } from '../button/button'
 import { BCalendar, NO_DATE_SELECTED, props as BCalendarProps } from '../calendar/calendar'
 import {
@@ -115,7 +122,7 @@ export const BFormDatepicker = /*#__PURE__*/ Vue.extend({
         : this.type === CALENDAR_MONTH
           ? 'No month selected'
           : this.labelNoDateSelected
-    },
+    }
   },
   watch: {
     [MODEL_PROP_NAME](newValue) {
@@ -206,9 +213,22 @@ export const BFormDatepicker = /*#__PURE__*/ Vue.extend({
     },
     // Render helpers
     defaultButtonFn({ isHovered, hasFocus }) {
-      return this.$createElement(isHovered || hasFocus ? BIconCalendarFill : BIconCalendar, {
-        attrs: { 'aria-hidden': 'true' }
-      })
+      return this.$createElement(
+        isHovered || hasFocus
+          ? this.type === CALENDAR_MONTH
+            ? BIconCalendarMonthFill
+            : this.type === CALENDAR_DAY
+              ? BIconCalendar3Fill
+              : BIconCalendarFill
+          : this.type === CALENDAR_MONTH
+            ? BIconCalendarMonth
+            : this.type === CALENDAR_DAY
+              ? BIconCalendar3
+              : BIconCalendar,
+        {
+          attrs: { 'aria-hidden': 'true' }
+        }
+      )
     }
   },
   render(h) {
