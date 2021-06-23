@@ -64,6 +64,7 @@
           },
           {
             "prop": "labelCurrentDecade",
+            "version": "2.XX.0",
             "description": "Value of the `aria-label` and `title` attributes on the `Current Decade` navigation button. Only utilized the the `type` is set to `year`."
           },
           {
@@ -72,6 +73,7 @@
           },
           {
             "prop": "labelMonths",
+            "version": "2.XX.0",
             "description": "The heading of the picker when `type` is set to `month`"
           },
           {
@@ -168,6 +170,7 @@
           },
           {
             "prop": "type",
+            "version": "2.XX.0",
             "description": "The type of calendar to display. Accepts `day`, `month`, or `year`."
           },
           {
@@ -195,7 +198,7 @@
             "args": [
               {
                 "arg": "context",
-                "description": "The context object. See documentaion for details",
+                "description": "The context object. See documentation for details",
                 "type": [
                   "Object"
                 ]
